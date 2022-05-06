@@ -259,11 +259,11 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
     __cs149_vec_float one_f = _cs149_vset_float(1.f);
     __cs149_vec_float ten = _cs149_vset_float(9.999999f);
     __cs149_mask maskAll, maskIsNegative, maskIsNotNegative, maskOverlarge;
-    for(int i=0; i<N; i+=VECTOR_WIDTH){
+    for(int i=0; i+VECTOR_WIDTH-1<N; i+=VECTOR_WIDTH){
         maskAll = _cs149_init_ones();
         maskIsNegative = _cs149_init_ones(0);
-        _cs149_vload_float(x, values+i, maskAll);
-        _cs149_vload_int(y, exponents+i, maskAll);
+        _cs149_vload_float(x, values + i, maskAll);
+        _cs149_vload_int(y, exponents + i, maskAll);
         _cs149_veq_int(maskIsNegative, y, zero_i, maskAll);
         _cs149_vadd_float(result, zero_f, one_f, maskIsNegative);
         maskIsNotNegative = _cs149_mask_not(maskIsNegative);
@@ -272,7 +272,7 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
         _cs149_veq_int(maskIsNegative, count, zero_i, maskAll);
         int done = _cs149_cntbits(maskIsNegative);
         maskIsNotNegative = _cs149_mask_not(maskIsNegative);
-        while(done != VECTOR_WIDTH){
+        while (done != VECTOR_WIDTH) {
             _cs149_vmult_float(result, result, x, maskIsNotNegative);
             _cs149_vsub_int(count, count, one_i, maskIsNotNegative);
             _cs149_veq_int(maskIsNegative, count, zero_i, maskAll);
@@ -281,7 +281,29 @@ void clampedExpVector(float* values, int* exponents, float* output, int N) {
         }
         _cs149_vgt_float(maskOverlarge, result, ten, maskAll);
         _cs149_vset_float(result, 9.999999f, maskOverlarge);
-        _cs149_vstore_float(output+i, result, maskAll);
+        _cs149_vstore_float(output + i, result, maskAll);
+    }
+    int left = N % VECTOR_WIDTH;
+    if(left>0){
+        int start = VECTOR_WIDTH * (N / VECTOR_WIDTH);
+        for(int i=start; i<N; i++){
+            float x = values[i];
+            int y = exponents[i];
+            if (y == 0) {
+                output[i] = 1.f;
+            } else {
+                float result = x;
+                int count = y - 1;
+                while (count > 0) {
+                    result *= x;
+                    count--;
+                }
+                if (result > 9.999999f) {
+                    result = 9.999999f;
+                }
+                output[i] = result;
+            }
+        }
     }
 }
 
