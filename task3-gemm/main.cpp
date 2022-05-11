@@ -7,6 +7,7 @@
 #include <vector>
 #include <cassert>
 #include <emmintrin.h>
+#include <immintrin.h>
 
 #define PRINT_TIME(code) do { \
     auto start = system_clock::now(); \
@@ -26,62 +27,83 @@ const int scale[] = {256, 512, 1024, 2048};
 const string data_path("./data/");
 
 int A[2060 * 2060], B[2060 * 2060], C[2060 * 2060];
-void AddDot1x4(const int &size, int *a, int *b, int *c){
-    int k;
-    register int
-        c_00_reg = 0,   c_01_reg = 0,   c_02_reg = 0,   c_03_reg = 0,
-        c_10_reg = 0,   c_11_reg = 0,   c_12_reg = 0,   c_13_reg = 0,
-        c_20_reg = 0,   c_21_reg = 0,   c_22_reg = 0,   c_23_reg = 0,
-        c_30_reg = 0,   c_31_reg = 0,   c_32_reg = 0,   c_33_reg = 0,
-        b_0p_reg = 0,   b_1p_reg = 0,   b_2p_reg = 0,   b_3p_reg = 0,
-        a_p0_reg = 0,   a_p1_reg = 0,   a_p2_reg = 0,   a_p3_reg = 0;
 
-    int *ap0_ptr, *ap1_ptr, *ap2_ptr, *ap3_ptr;
-    ap0_ptr = &a[0];
-    ap1_ptr = &a[size];
-    ap2_ptr = &a[size * 2];
-    ap3_ptr = &a[size * 3];
+typedef union{
+    __m128i v;
+    int d[4];
+} v4i;
+
+void AddDot4x4(const int &size, int *a, int *b, int *c){
+    int k;
+    v4i
+        c_00_c_01_c_02_c_03_reg,
+        c_10_c_11_c_12_c_13_reg,
+        c_20_c_21_c_22_c_23_reg,
+        c_30_c_31_c_32_c_33_reg,
+        b_p0_b_p1_b_p2_b_p3_reg,
+        a_0p_reg, a_1p_reg, a_2p_reg, a_3p_reg;
+
+    int *a0p_ptr, *a1p_ptr, *a2p_ptr, *a3p_ptr;
+    a0p_ptr = &a[0];
+    a1p_ptr = &a[size];
+    a2p_ptr = &a[size * 2];
+    a3p_ptr = &a[size * 3];
+
+    c_00_c_01_c_02_c_03_reg.v = _mm_setzero_si128();
+    c_10_c_11_c_12_c_13_reg.v = _mm_setzero_si128();
+    c_20_c_21_c_22_c_23_reg.v = _mm_setzero_si128();
+    c_30_c_31_c_32_c_33_reg.v = _mm_setzero_si128();
 
     for(k = 0; k < size; k++){
-        b_0p_reg = b[k * size];
-        b_1p_reg = b[k * size + 1];
-        b_2p_reg = b[k * size + 2];
-        b_3p_reg = b[k * size + 3];
+        b_p0_b_p1_b_p2_b_p3_reg.v = _mm_set_epi32(b[k * size + 3], b[k * size + 2], b[k * size + 1], b[k * size]);
+        int ap = *a0p_ptr;
+//        printf("*** %d ***\n",ap);
+        a_0p_reg.v = _mm_set_epi32(ap, ap, ap, ap);
+        ++ a0p_ptr;
 
-        a_p0_reg = *ap0_ptr ++;
-        a_p1_reg = *ap1_ptr ++;
-        a_p2_reg = *ap2_ptr ++;
-        a_p3_reg = *ap3_ptr ++;
+        ap = *a1p_ptr;
+//        printf("*** %d ***\n",ap);
+        a_1p_reg.v = _mm_set_epi32(ap, ap, ap, ap);
+        ++ a1p_ptr;
 
-        c_00_reg += a_p0_reg * b_0p_reg;
-        c_10_reg += a_p1_reg * b_0p_reg;
+        ap = *a2p_ptr;
+//        printf("*** %d ***\n",ap);
+        a_2p_reg.v = _mm_set_epi32(ap, ap, ap, ap);
+        ++ a2p_ptr;
 
-        c_01_reg += a_p0_reg * b_1p_reg;
-        c_11_reg += a_p1_reg * b_1p_reg;
+        ap = *a3p_ptr;
+//        printf("*** %d ***\n",ap);
+        a_3p_reg.v = _mm_set_epi32(ap, ap, ap, ap);
+        ++ a3p_ptr;
 
-        c_02_reg += a_p0_reg * b_2p_reg;
-        c_12_reg += a_p1_reg * b_2p_reg;
-
-        c_03_reg += a_p0_reg * b_3p_reg;
-        c_13_reg += a_p1_reg * b_3p_reg;
-
-        c_20_reg += a_p2_reg * b_0p_reg;
-        c_30_reg += a_p3_reg * b_0p_reg;
-
-        c_21_reg += a_p2_reg * b_1p_reg;
-        c_31_reg += a_p3_reg * b_1p_reg;
-
-        c_22_reg += a_p2_reg * b_2p_reg;
-        c_32_reg += a_p3_reg * b_2p_reg;
-
-        c_23_reg += a_p2_reg * b_3p_reg;
-        c_33_reg += a_p3_reg * b_3p_reg;
+//        getchar();
+        c_00_c_01_c_02_c_03_reg.v = _mm_add_epi32( c_00_c_01_c_02_c_03_reg.v, _mm_mullo_epi32(a_0p_reg.v, b_p0_b_p1_b_p2_b_p3_reg.v));
+        c_10_c_11_c_12_c_13_reg.v = _mm_add_epi32( c_10_c_11_c_12_c_13_reg.v, _mm_mullo_epi32(a_1p_reg.v, b_p0_b_p1_b_p2_b_p3_reg.v));
+        c_20_c_21_c_22_c_23_reg.v = _mm_add_epi32( c_20_c_21_c_22_c_23_reg.v, _mm_mullo_epi32(a_2p_reg.v, b_p0_b_p1_b_p2_b_p3_reg.v));
+        c_30_c_31_c_32_c_33_reg.v = _mm_add_epi32( c_30_c_31_c_32_c_33_reg.v, _mm_mullo_epi32(a_3p_reg.v, b_p0_b_p1_b_p2_b_p3_reg.v));
+//        printf("%d %d %d %d\n",c_00_c_01_c_02_c_03_reg.d[0],c_00_c_01_c_02_c_03_reg.d[1],c_00_c_01_c_02_c_03_reg.d[2],c_00_c_01_c_02_c_03_reg.d[3]);
+//        printf("%d %d %d %d\n",c_10_c_11_c_12_c_13_reg.d[0],c_10_c_11_c_12_c_13_reg.d[1],c_10_c_11_c_12_c_13_reg.d[2],c_10_c_11_c_12_c_13_reg.d[3]);
+//        printf("%d %d %d %d\n",c_20_c_21_c_22_c_23_reg.d[0],c_20_c_21_c_22_c_23_reg.d[1],c_20_c_21_c_22_c_23_reg.d[2],c_20_c_21_c_22_c_23_reg.d[3]);
+//        printf("%d %d %d %d\n",c_30_c_31_c_32_c_33_reg.d[0],c_30_c_31_c_32_c_33_reg.d[1],c_30_c_31_c_32_c_33_reg.d[2],c_30_c_31_c_32_c_33_reg.d[3]);
+//        getchar();
     }
 
-    c[0 * size + 0] += c_00_reg; c[0 * size + 1] += c_01_reg; c[0 * size + 2] += c_02_reg; c[0 * size + 3] += c_03_reg;
-    c[1 * size + 0] += c_10_reg; c[1 * size + 1] += c_11_reg; c[1 * size + 2] += c_12_reg; c[1 * size + 3] += c_13_reg;
-    c[2 * size + 0] += c_20_reg; c[2 * size + 1] += c_21_reg; c[2 * size + 2] += c_22_reg; c[2 * size + 3] += c_23_reg;
-    c[3 * size + 0] += c_30_reg; c[3 * size + 1] += c_31_reg; c[3 * size + 2] += c_32_reg; c[3 * size + 3] += c_33_reg;
+    c[0 * size + 0] += c_00_c_01_c_02_c_03_reg.d[0];
+    c[0 * size + 1] += c_00_c_01_c_02_c_03_reg.d[1];
+    c[0 * size + 2] += c_00_c_01_c_02_c_03_reg.d[2];
+    c[0 * size + 3] += c_00_c_01_c_02_c_03_reg.d[3];
+    c[1 * size + 0] += c_10_c_11_c_12_c_13_reg.d[0];
+    c[1 * size + 1] += c_10_c_11_c_12_c_13_reg.d[1];
+    c[1 * size + 2] += c_10_c_11_c_12_c_13_reg.d[2];
+    c[1 * size + 3] += c_10_c_11_c_12_c_13_reg.d[3];
+    c[2 * size + 0] += c_20_c_21_c_22_c_23_reg.d[0];
+    c[2 * size + 1] += c_20_c_21_c_22_c_23_reg.d[1];
+    c[2 * size + 2] += c_20_c_21_c_22_c_23_reg.d[2];
+    c[2 * size + 3] += c_20_c_21_c_22_c_23_reg.d[3];
+    c[3 * size + 0] += c_30_c_31_c_32_c_33_reg.d[0];
+    c[3 * size + 1] += c_30_c_31_c_32_c_33_reg.d[1];
+    c[3 * size + 2] += c_30_c_31_c_32_c_33_reg.d[2];
+    c[3 * size + 3] += c_30_c_31_c_32_c_33_reg.d[3];
 }
 void Gemm(const int &size, vec &a, vec &b, vec &c) {
     for(int i = 0; i < size; i++){
@@ -93,7 +115,7 @@ void Gemm(const int &size, vec &a, vec &b, vec &c) {
     }
     for(int i = 0; i < size; i+=4){
         for(int j = 0; j < size; j+=4){
-            AddDot1x4(size, &A[i * size], &B[j], &C[i * size + j]);
+            AddDot4x4(size, &A[i * size], &B[j], &C[i * size + j]);
         }
     }
     for(int i = 0; i < size; i++){
@@ -107,6 +129,10 @@ void CheckResult(const vec &c, const string &result_path) {
     ifstream file_result(result_path);
     int nelems = c.size();
     float res_i;
+//    for(int i = 0; i < nelems; i++){
+//        printf("%d ", c[i]);
+//    }
+//    getchar();
     for(int i = 0; i < nelems; i++) {
         file_result >> res_i;
         assert(c[i] == res_i);
