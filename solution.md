@@ -1,0 +1,76 @@
+# 七边形超算队招新解答
+
+## 设备信息
+
+CPU
+- AMD Ryzen 7 5800H
+- 内核数：8
+
+内存
+- 容量：16GB
+- 速度：3200MHz
+
+## Task1
+
+1. 在虚拟机上配置了 `make` ，尝试使用 `makefile`
+
+2. 在 `c++reference` 学习了 `std:thread()` 的基本用法
+
+3. 题目要求使用8个线程来计算分型图，考虑到将第 $i$ 行的计算任务分配给第 $i \% 8$ 个线程。将 `mandelbrotThread.cpp` 中的 `MAX_THREADS` 修改为 8，并在每个线程中每 8 行计算一次，达到了 6.68x 的加速比。
+
+## Task2
+
+1. 阅读题目过后顺序阅读了 `CS149intrin.h` ，明白了 `mask` 和 `vec` 这两种数据类型的作用， `mask` 用作逻辑判断， `vec` 相当于向量寄存器。
+
+2. `main.cpp` 中的 `abs` 函数给我了使用这些函数的样例，弄明白了如何操作向量寄存器。
+
+3. 对着原始的程序一行行地转换到了`SIMD`写法。对于第一个任务，还需要处理 `VECTOR_WIDTH` 不整除于 `N` 的情况。对于多出的一小段，新开一个长度为 `VECTOR_WIDTH` 的向量寄存器，将 `maskAll` 后半部分恒置为 $0$，不进行运算。
+
+## Task3
+
+1. 首先查看了 `Block` 的文档，将矩阵分块进行运算，在测试下发现分块长度为16时较优。
+
+2. 将循环中的 `k` 放在最外层循环，就能将 `a[i][k]` 保存下来，但是测试发现优化不大。
+
+3. 找到了[一个比较有用的网站](https://github.com/flame/how-to-optimize-gemm)。
+
+4. 对矩阵进行1*4的分块，在循环中 `i+=4` ，调用一个 `AddDot1x4` 函数。在函数中把重复使用的值存入寄存器，并采用指针访问优化，达到如下效果：
+```
+Running, dataset: size 256
+time spent: 11955us
+Passed, dataset: size 256
+
+Running, dataset: size 512
+time spent: 95484us
+Passed, dataset: size 512
+
+Running, dataset: size 1024
+time spent: 973320us
+Passed, dataset: size 1024
+
+Running, dataset: size 2048
+time spent: 1.2415e+07us
+Passed, dataset: size 2048
+
+```
+
+5. 在 `AddDot1x4` 函数的 `for` 循环中使用间接寻址的方法做优化，优化程度可以忽略不计。
+
+6. 采用 `4*4` 分块，达到如下效果：
+```
+Running, dataset: size 256
+time spent: 8216us
+Passed, dataset: size 256
+
+Running, dataset: size 512
+time spent: 61762us
+Passed, dataset: size 512
+
+Running, dataset: size 1024
+time spent: 517034us
+Passed, dataset: size 1024
+
+Running, dataset: size 2048
+time spent: 5.84973e+06us
+Passed, dataset: size 2048
+```
