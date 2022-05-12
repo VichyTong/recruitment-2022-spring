@@ -74,3 +74,62 @@ Running, dataset: size 2048
 time spent: 5.84973e+06us
 Passed, dataset: size 2048
 ```
+7. 采用`SIMD`，遇到非常多的bug。首先是编译不通过，在编译选项中加入了 `-msse4.1` 成功通过。第二个是 `_mm_set_epi32` 函数，它的赋值顺序应该倒转过来，按照 `b[k][3],b[k][2],b[k][1],b[k][0]` 的顺序赋值。但是程序的效率反而降低了，怀疑是`union`中的操作占用时间太多。
+
+```
+Running, dataset: size 256
+time spent: 22864us
+Passed, dataset: size 256
+
+Running, dataset: size 512
+time spent: 180093us
+Passed, dataset: size 512
+
+Running, dataset: size 1024
+time spent: 1.47905e+06us
+Passed, dataset: size 1024
+
+Running, dataset: size 2048
+time spent: 1.27792e+07us
+Passed, dataset: size 2048
+```
+
+8. 将union取消使用，替换为 `_mm_load_si128` 函数来储存答案，优化效果并不突出。尝试将`_mm_set_epi32` 替换为 `_mm_load_si128`，降低了少量的时间消耗。经过测试，`_mm_set_epi32(ap, ap, ap, ap)` 的效率比 `_mm_set1_epi32(ap)` 要高。
+
+9. 尝试使用了 `OpenMP` ，效率有极大提升。
+```
+Running, dataset: size 256
+time spent: 8660us
+Passed, dataset: size 256
+
+Running, dataset: size 512
+time spent: 36628us
+Passed, dataset: size 512
+
+Running, dataset: size 1024
+time spent: 245792us
+Passed, dataset: size 1024
+
+Running, dataset: size 2048
+time spent: 1.84662e+06us
+Passed, dataset: size 2048
+```
+
+10. 没有想清楚为什么使用 `SIMD` 之后程序效率反而降低，将原来的非 `SIMD` 程序替换上来，使用 `OpenMP` ，达到以下效果：
+```
+Running, dataset: size 256
+time spent: 2807us
+Passed, dataset: size 256
+
+Running, dataset: size 512
+time spent: 15456us
+Passed, dataset: size 512
+
+Running, dataset: size 1024
+time spent: 114352us
+Passed, dataset: size 1024
+
+Running, dataset: size 2048
+time spent: 959647us
+Passed, dataset: size 2048
+```
