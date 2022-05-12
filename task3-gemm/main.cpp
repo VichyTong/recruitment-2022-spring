@@ -56,12 +56,12 @@ void PackB(int k, int *b, int ldb, int *b_to){
 void AddDot4x4(int K, int *a, int lda, int *b, int ldb, int *c, int ldc){
     int k;
     __m128i
-        c_00_c_01_c_02_c_03_reg,
-        c_10_c_11_c_12_c_13_reg,
-        c_20_c_21_c_22_c_23_reg,
-        c_30_c_31_c_32_c_33_reg,
-        b_p0_b_p1_b_p2_b_p3_reg,
-        a_0p_reg, a_1p_reg, a_2p_reg, a_3p_reg;
+            c_00_c_01_c_02_c_03_reg,
+            c_10_c_11_c_12_c_13_reg,
+            c_20_c_21_c_22_c_23_reg,
+            c_30_c_31_c_32_c_33_reg,
+            b_p0_b_p1_b_p2_b_p3_reg,
+            a_0p_reg, a_1p_reg, a_2p_reg, a_3p_reg;
 
     int *a0p_ptr, *a1p_ptr, *a2p_ptr, *a3p_ptr;
     a0p_ptr = &a[0];
@@ -183,21 +183,22 @@ void Gemm(const int &size, vec &a, vec &b, vec &c) {
             C[i * size + j] = 0;
         }
     }
-//    const int N = size;
-//    int kb, jb;
-//    for (int k = 0; k < size; k += kc ){
-//        kb = min(N - k, kc);
-//        for (int j = 0; j < size; j += mc ){
-//            jb = min(N - j, mc);
-//            InnerKernel(N, jb, kb, &A[k], N, &B[k * N + j], N, &C[j], N);
-//        }
-//    }
-#pragma omp parallel for
-    for(int i = 0; i < size; i+=4){
-        for(int j = 0; j < size; j+=4){
-            AddDot1x4(size, &A[i * size], &B[j], &C[i * size + j]);
+    const int N = size;
+    int kb, jb;
+    for (int k = 0; k < size; k += kc ){
+        kb = min(N - k, kc);
+        for (int j = 0; j < size; j += mc ){
+            jb = min(N - j, mc);
+            InnerKernel(N, jb, kb, &A[k], N, &B[k * N + j], N, &C[j], N);
         }
     }
+
+//#pragma omp parallel for
+//    for(int i = 0; i < size; i+=4){
+//        for(int j = 0; j < size; j+=4){
+//            AddDot1x4(size, &A[i * size], &B[j], &C[i * size + j]);
+//        }
+//    }
 
     for(int i = 0; i < size; i++){
         for(int j = 0; j < size; j++){
@@ -238,7 +239,7 @@ void Benchmark(const int &size) {
     }
 
     PRINT_TIME(
-       Gemm(size, a, b, c);
+            Gemm(size, a, b, c);
     );
 
     CheckResult(c, result_path);

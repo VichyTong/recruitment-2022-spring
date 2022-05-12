@@ -94,7 +94,7 @@ time spent: 1.27792e+07us
 Passed, dataset: size 2048
 ```
 
-8. 将union取消使用，替换为 `_mm_load_si128` 函数来储存答案，优化效果并不突出。尝试将`_mm_set_epi32` 替换为 `_mm_load_si128`，降低了少量的时间消耗。经过测试，`_mm_set_epi32(ap, ap, ap, ap)` 的效率比 `_mm_set1_epi32(ap)` 要高。
+8. 将`union`取消使用，替换为 `_mm_load_si128` 函数来储存答案，优化效果并不突出。尝试将`_mm_set_epi32` 替换为 `_mm_load_si128`，降低了少量的时间消耗。经过测试，`_mm_set_epi32(ap, ap, ap, ap)` 的效率比 `_mm_set1_epi32(ap)` 要高。
 
 9. 尝试使用了 `OpenMP` ，效率有极大提升。
 ```
@@ -132,4 +132,27 @@ Passed, dataset: size 1024
 Running, dataset: size 2048
 time spent: 959647us
 Passed, dataset: size 2048
+```
+
+11. 最终结果就是采用了分块+SIMD+OpenMP的程序的加速比：
+```
+dataset: size 256
+11.4x
+dataset: size 512
+21.7x
+dataset: size 1024
+27.4x
+dataset: size 2048
+34.4x
+```
+采用分块+OpenMP的程序的加速比：
+```
+dataset: size 256
+35.2x
+dataset: size 512
+51.5x
+dataset: size 1024
+59.0x
+dataset: size 2048
+66.2x
 ```
